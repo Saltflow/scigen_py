@@ -7,8 +7,8 @@ def test_read_rules(file):
   with open(file, 'r') as f:
     fh = f.readlines()
   rules = {}
-  RE = None
-  read_rules.read_rules(fh, rules, RE, 10)
+  RE = []
+  read_rules.read_rules(fh, rules, RE, 20)
   print(rules)
   print(RE)
 

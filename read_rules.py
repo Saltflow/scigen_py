@@ -41,6 +41,8 @@ def read_rules(fh, rules, RE, debug):
       with open(file, 'r') as f:
         inc_fh = f.readlines()
       read_rules(inc_fh, rules, None, debug)
+      continue
+
     if(len(word) >= 2 and word[1] == '{'): # name included
       end = 0
       while(line_num < len(fh)):
@@ -50,11 +52,11 @@ def read_rules(fh, rules, RE, debug):
           end = 1
           break
         else:
-          rule += line
+          rule += line.rstrip()
       if(not end):
         print(name, "EOF found before close rule")
     else:
-      line_rm_trailing = re.match("^\S+\s+", line).group()
+      line_rm_trailing = ' '.join(line.split()[1:])
       rule = line_rm_trailing.rstrip()
 
     weight = 1
@@ -73,11 +75,12 @@ def read_rules(fh, rules, RE, debug):
         rules[name] = []
       rules[name].append(rule)
   if(RE is not None):
-    compute_re(rules, RE)
+    return compute_re(rules, RE)
 
 def compute_re(rules, RE):
-  in_str = '|'.join(rules['name'].sort(key=lambda x: len(x)))
-  RE = list(f"^(.*?)({in_str})")
+  in_str = '|'.join(sorted(rules.keys(), key= lambda x:-len(x)))
+  RE = f"^(.*?)({in_str})"
+  return RE
   
 def expand(rules, start, RE, debug):
   # check for special rules ending in + and # 
@@ -85,20 +88,25 @@ def expand(rules, start, RE, debug):
   # The same rule ending in # chooses a random # from among preiously
   # generated integers
   start_match = re.match("(.*)\+$", start)
-  rule = start_match.group(1)
-  i = rules[rule]
-  if(not i):
-    i = 0
-  else:
-    i = random.randint(i)
+  if(start_match):
+    rule = start_match.group(1)
+    i = rules[rule]
+    if(not i):
+      i = 0
+      rules[rule] = 1
+    else:
+      rules[rule] = i+1
+    return i
 
   start_match = re.match("(.*)\#$", start)
-  rule = start_match.group(1)
-  i = rules[rule]
-  if(not i):
-    i = 0
-  else:
-    i = random.randint(i)
+  if(start_match):
+    rule = start_match.group(1)
+    i = rules[rule]
+    if(not i):
+      i = 0
+    else:
+      i = random.randint(eval(i))
+    return str(i)
 
   repeat = 1
   count = 0
@@ -114,7 +122,7 @@ def expand(rules, start, RE, debug):
       first_rule = pop_first_rule(rules, input, RE)
       if(first_rule is None):
         break
-      pre, rule = first_rule
+      pre, rule, input = first_rule
       ex = expand(rules, rule, RE, debug)
       if(len(pre)):
         components.append(pre)
@@ -142,7 +150,8 @@ def pop_first_rule(rules, input, RE): # rule and preamble are outputs
   if(input_match):
     preamble = input_match.group(1)
     rule = input_match.group(2)
-    return preamble, rule
+    input_new = input[len(preamble) + len(rule):]
+    return preamble, rule, input_new
   return None
 
 def pick_rand(in_set):
