@@ -1,7 +1,9 @@
-from logging import warning
+from logging import warn, warning
 import os
 import re
 import random
+
+from numpy import append
 
 
 def file_name(filename):
@@ -25,17 +27,17 @@ def read_rules(fh, rules, RE, debug):
     rule = ""
 
     if(name[-1] == '!'):
-      rules['dup_name'].append(dup_name(name))
+      rules[dup_name(name)] = ''
     
     if(name == '.include'):
       file = word[1]
 
-      if(file in rules['file']):
+      if(file_name(file) in rules.keys()):
         if(debug > 0):
           print ("Skipping duplicate included file $file\n")
           continue
         else:
-          rules['file'].append(file)
+          rules[file_name(file)] = 1
       with open(file, 'r') as f:
         inc_fh = f.readlines()
       read_rules(inc_fh, rules, None, debug)
@@ -53,7 +55,7 @@ def read_rules(fh, rules, RE, debug):
         print(name, "EOF found before close rule")
     else:
       line_rm_trailing = re.match("^\S+\s+", line).group()
-      rule = line_rm_trailing.rstrip('\n')
+      rule = line_rm_trailing.rstrip()
 
     weight = 1
     name_by_weight = re.match("([^\+]*)\+(\d+)$", name)
@@ -67,7 +69,9 @@ def read_rules(fh, rules, RE, debug):
       weight = weight - 1
       if(name == "\n"):
         print(word)
-      rules['name'].append(name)
+      if(name not in rules.keys()):
+        rules[name] = []
+      rules[name].append(rule)
   if(RE is not None):
     compute_re(rules, RE)
 
@@ -76,7 +80,62 @@ def compute_re(rules, RE):
   RE = list(f"^(.*?)({in_str})")
   
 def expand(rules, start, RE, debug):
-  pass
+  # check for special rules ending in + and # 
+  # Rules ending in + generate a sequential integer
+  # The same rule ending in # chooses a random # from among preiously
+  # generated integers
+  start_match = re.match("(.*)\+$", start)
+  rule = start_match.group(1)
+  i = rules[rule]
+  if(not i):
+    i = 0
+  else:
+    i = random.randint(i)
+
+  start_match = re.match("(.*)\#$", start)
+  rule = start_match.group(1)
+  i = rules[rule]
+  if(not i):
+    i = 0
+  else:
+    i = random.randint(i)
+
+  repeat = 1
+  count = 0
+  components = []
+  while(repeat):
+    input = pick_rand(rules[start])
+    count += 1
+    if(debug >= 5):
+      warn(f"{start} -> {input}")
+    
+    repeat = 0
+    while(True):
+      first_rule = pop_first_rule(rules, input, RE)
+      if(first_rule is None):
+        break
+      pre, rule = first_rule
+      ex = expand(rules, rule, RE, debug)
+      if(len(pre)):
+        components.append(pre)
+      if(len(ex)):
+        components.append(ex)
+    if(len(input)):
+      components.append(input)
+    full_token = "".join(components)
+    if (dup_name(start) in rules.keys()):
+      ref = rules[dup_name(start)]
+      dups = ref
+      for d in dups:
+        if(d == full_token):
+          repeat = 1
+      if (not repeat):
+        rules[dup_name(start)] += full_token
+      elif count > 50:
+        repeat = 0
+  return full_token
+    
+
       
 def pop_first_rule(rules, input, RE): # rule and preamble are outputs
   input_match = re.match(RE, input)

@@ -6,7 +6,7 @@ import read_rules
 def test_read_rules(file):
   with open(file, 'r') as f:
     fh = f.readlines()
-  rules = {'dup_name': [], 'file': [], 'name': []}
+  rules = {}
   RE = None
   read_rules.read_rules(fh, rules, RE, 10)
   print(rules)
