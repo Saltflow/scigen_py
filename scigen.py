@@ -15,4 +15,6 @@ RE = read_rules(tex_fh, tex_data, RE, 10)
 
 tex = generate(tex_data, start_rule, RE, 10, 0)
 
+with open('xxx.tex','w') as save:
+  save.write(tex)
 print(tex)

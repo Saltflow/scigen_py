@@ -90,23 +90,26 @@ def expand(rules, start, RE, debug):
   start_match = re.match("(.*)\+$", start)
   if(start_match):
     rule = start_match.group(1)
-    i = rules[rule]
-    if(not i):
+    if(rule not in rules.keys()):
       i = 0
-      rules[rule] = 1
+      rules[rule] = str(i)
     else:
-      rules[rule] = i+1
-    return i
+      i = eval(rules[rule])
+      rules[rule] = str(i+1)
+    return str(i)
 
   start_match = re.match("(.*)\#$", start)
   if(start_match):
     rule = start_match.group(1)
-    i = rules[rule]
-    if(not i):
+    if(rule not in rules.keys()):
       i = 0
+      rules[rule]= str(i)
     else:
-      i = random.randint(eval(i))
+      i = random.randint(0, eval(rules[rule]))
     return str(i)
+
+  if(start == "}"):
+    return start
 
   repeat = 1
   count = 0
